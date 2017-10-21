@@ -71,10 +71,13 @@ def alllinks(title):
 def get_links(title):
     x=re.compile("^:wikt|outline|portal|list|sexual|latin|history|glossary|index|book|wikipedia|wikibooks|image|file|help|template|category|special:|english|language|\(disambiguation\)$")
     article = urllib.quote(title)
+    print article
     opener = urllib2.build_opener()
     opener.addheaders = [('User-agent', 'Mozilla/5.0')] #wikipedia needs this
+    print 'open'
     resource = opener.open("http://en.wikipedia.org/wiki/" + article)
     data = resource.read()
+    print 'read'
     resource.close()
 ##    data=getPage(article)
     soup = BeautifulSoup(data, 'lxml')
@@ -140,20 +143,25 @@ if __name__ == '__main__':
     fw=open("imunsuredude.txt","w+")
     #title=str(sys.argv[1])
     #level=int(sys.argv[2])
-    title="online shopping"
+    #title="rabin karp algorithm"
+    title = "online shopping"
     level=2
     i=0
     links=[title]
     link2=[title]
     #gl=[]
     
+    print 'link output: ' , links;
     while (i<level):
         this_level=[]
         for link in links:
+            print 'singular links: ', link
             try:
                 #this_level.extend(get_links(link))
                 '''gl=get_links(link)
                 print gl'''
+                linksofcurrent = get_links(link)
+                print 'first level:' , linksofcurrent
                 for k in get_links(link):
                     if k not in this_level:
                          if  k.lower() not in (y.lower() for y in link2):

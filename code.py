@@ -25,7 +25,7 @@ def cat(title):
     x=re.compile("^regions|ancient|countries|capitals|boroughs|towns|continents|provinces|numbers|sexual|states|cities|nations|stimulants|drugs|medicines$")
     article = urllib.quote(title)
     data=getPage(article)
-    soup = BeautifulSoup(data)
+    soup = BeautifulSoup(data, 'lxml')
     links=[]
     i=1
     cat=soup.find('div',id="mw-normal-catlinks")
@@ -52,7 +52,7 @@ def alllinks(title):
 ##        data = resource.read()
 ##        resource.close()
         data=getPage(article)
-        soup = BeautifulSoup(data)
+        soup = BeautifulSoup(data, 'lxml')
         para=soup.find('div',id="mw-content-text")
         for link in para.findAll('a', attrs={'href': re.compile("^/wiki/")}):
             line=link.get('href')[6:]
@@ -77,7 +77,7 @@ def get_links(title):
     data = resource.read()
     resource.close()
 ##    data=getPage(article)
-    soup = BeautifulSoup(data)
+    soup = BeautifulSoup(data, 'lxml')
     links=[]
     links1=[]
     j=0

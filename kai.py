@@ -71,13 +71,10 @@ def alllinks(title):
 def get_links(title):
     x=re.compile("^:wikt|outline|portal|list|sexual|latin|history|glossary|index|book|wikipedia|wikibooks|image|file|help|template|category|special:|english|language|\(disambiguation\)$")
     article = urllib.quote(title)
-    print article
     opener = urllib2.build_opener()
     opener.addheaders = [('User-agent', 'Mozilla/5.0')] #wikipedia needs this
-    print 'open'
     resource = opener.open("http://en.wikipedia.org/wiki/" + article)
     data = resource.read()
-    print 'read'
     resource.close()
 ##    data=getPage(article)
     soup = BeautifulSoup(data, 'lxml')
@@ -108,6 +105,7 @@ def get_links(title):
                 line=urllib.unquote(line).decode('utf8')
                 line=line.split('|')[0]
                 line=line.split('#')[0]
+                print 'Link name: ', line
                 if x.findall(line.lower())==[]:
                     if  line.lower() not in (y.lower() for y in links):
                         links.append(line)
@@ -144,8 +142,8 @@ if __name__ == '__main__':
     #title=str(sys.argv[1])
     #level=int(sys.argv[2])
     #title="rabin karp algorithm"
-    title = "online shopping"
-    level=2
+    title = "Rabin-Karp algorithm"
+    level=1
     i=0
     links=[title]
     link2=[title]
@@ -168,7 +166,7 @@ if __name__ == '__main__':
                              if cat(k)==1:
                                 this_level.append(k)                     
             except:
-                print 'Couldn\'t pursue %s. Most likely an encoding problem' %(link)
+                print 'Couldn\'t pursue \'%s\'. Most likely an encoding problem' %(link)
         links=this_level
         
         #link2+=links

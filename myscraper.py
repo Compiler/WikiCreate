@@ -8,7 +8,7 @@ import codecs
 import operator
 
 parser = 'lxml'
-link_hash = {}
+global_link_hash = {}
 
 def get_links(title):
     url = 'http://en.wikipedia.org/wiki/' + urllib.quote(title)
@@ -17,16 +17,25 @@ def get_links(title):
     sourcecode = urllib.urlopen(url).read()
     soupobj = BeautifulSoup(sourcecode, parser) 
     intro = soupobj.find("div", {'class':'mw-parser-output'}).findAll();
+    link_hash = {}
     for element in intro:
         if element.name == 'h2': break;
         if element.name == 'p':
             links = element.findAll('a', attrs={'href' : re.compile('^/wiki/')})
             for valid_link in links:
                 final_link = valid_link.get('href')[6:]
-                if link_key not in link_hash: 
-                    link_hash[link_to_normal(final_key)] = final_link
+                if final_link not in global_link_hash: 
+                    global_link_hash[final_link] = 1
+                    link_hash[final_link] = 1
 
     ##todo: add to link
+    
+
+
+
+
+    #add dictionary to end of global hash
+    return link_hash
 
 def link_to_normal(link):
     link_key = link

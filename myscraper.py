@@ -30,18 +30,27 @@ def get_links(title):
 
 
 
-    ###########3
+
+
+
+                    #########################
+                    #See Also Section Scrape#
+                    #########################
+
     mything = 'div-col columns column-count column-count-2'
-    see_also_section = soupobj.find("div", {'class' : mything})
-    if see_also_section != None:
+    contents_section = soupobj.find("div", {'id' : 'toc'})
+    if contents_section != None:
         #see_also_section = see_also_section.findAll()
-        for element in see_also_section.contents:
+        for element in contents_section.contents:
             if element.name == 'ul':
-                see_also_list = element.findAll('a', attrs={'href' : re.compile('^/wiki/')})
-                for links in see_also_list:
-                    print links.get('href')[6:]
-            ##todo: add to link
-    
+                contents_list = element.findAll('a', attrs={'href' : re.compile('^#')})
+                for links in contents_list:
+                    if links.get('href') == '#See_also':
+                        print 'Page has see also\n\n'
+                        see_also_section = soupobj.find('span', {'class':'mw-headline', 'id':'See also'})
+                        print 'Nothing found' if see_also_section != None else see_also_section
+    else: print 'No see also section exists\n\n'
+
 
 
 
@@ -57,11 +66,18 @@ def link_to_normal(link):
 
 
 if __name__ == '__main__':
-    #starting_link = 'Rabin-Karp algorithm'
-    starting_link = 'computer science'
+    starting_link = 'Rabin-Karp algorithm'
+    
     x=re.compile("^:wikt|outline|portal|list|sexual|latin|history|glossary|index|book|wikipedia|wikibooks|image|file|help|template|category|special:|english|language|\(disambiguation\)$")
     
     first_level_hash = get_links(starting_link)
-    for v, k in first_level_hash.iteritems():
-        print v, ' -> ', k
+    for key in first_level_hash.viewkeys():
+        print key, ' -> ', first_level_hash[key]
+        print 'Getting links for ', key
+        get_links(first_level_hash[key])
+
+
+
+        
+
 

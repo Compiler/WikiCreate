@@ -1,6 +1,6 @@
 Rabin-Karp algorithm
-String searching algorithm
-Big-O notation
 Computer science
 Hash function
+Big-O notation
+String searching algorithm
 =

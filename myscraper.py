@@ -8,10 +8,18 @@ import codecs
 import operator
 from StringIO import StringIO
 import gzip
+import timeit
+
+
+
+
 parser = 'lxml'
 global_link_hash = {}
 
 DELETE_COUNT = 0
+
+BAD_LINK = -3
+GOOD_LINK = 4
 
 def get_page(url):
     opener = urllib2.build_opener()
@@ -25,50 +33,57 @@ def get_page(url):
         return resource.read()
 
 
+
+def validate(title):
+    if title in global_link_hash:
+        return BAD_LINK
+    return GOOD_LINK
+
 def get_links(title):
     
     
     
-    try:
-        #url = title.encode('utf8')
-        url = urllib.quote(title)
-    except:
-        #print 'Exception Caught trying to use urllib.quote(title)'
-        #url = title.encode('utf8')
-        
-        url = re.sub(' ', '_', title)
-     
-
-    #print 'URL to be searched:', url
     
+    url = re.sub(' ', '_', title)
     sourcecode = get_page(url)
-    	
-    if category_filter(sourcecode) == -1:
+    soupobj = BeautifulSoup(sourcecode, parser)
+    
+    main_name = soupobj.find("h1")
+    main_name = main_name.text
+    print url, '->', main_name 
+    
+    global_link_hash[main_name] = GOOD_LINK
+    global_link_hash[title] = GOOD_LINK
+    global_link_hash[url] = GOOD_LINK
+    
+    redirect = soupobj.find('span', {'class':'mw-redirectedfrom'})
+    doc_title = soupobj.find('title').text
+
+    
+    if redirect != None:
+        redirect_from_name = (redirect.find('a', {'class':'mw-redirect'})).text
+        print url, ' redirected from ', redirect_from_name
+    
+    
+    
+    
+    
+    if category_filter(sourcecode) == BAD_LINK:
         #try to remove itself
-        if url.lower() in global_link_hash or title.lower() in global_link_hash:
-            
-            try:
-                del global_link_hash[url.lower()]
-                del global_link_hash[title.lower()]
-            except:
-                pass
-            global DELETE_COUNT
-            DELETE_COUNT += 1
-        #return {}
+        global_link_hash[url] = BAD_LINK
+        global DELETE_COUNT
+        DELETE_COUNT += 1
+        return {} 
     
     
-    soupobj = BeautifulSoup(sourcecode, parser) 
+
     intro = soupobj.find("div", {'class':'mw-parser-output'}).findAll();
     link_hash = {}
     for element in intro:
         if element.name == 'h2': break;
         if element.name == 'p':
             links = element.findAll('a', attrs={'href' : re.compile('^/wiki/')})
-            for valid_link in links:
-                final_link = valid_link.get('href')[6:]
-                if final_link.lower() not in global_link_hash: 
-                    global_link_hash[final_link.lower()] = 1
-                    link_hash[final_link] = link_to_normal(final_link)
+            validate_links_and_populate(links, link_hash)
 
 
 
@@ -93,12 +108,7 @@ def get_links(title):
                         
                         link_section = parent.findNext('ul', attrs={'style':None}) 
                         links = link_section.findAll('a', attrs={'href' : re.compile('^/wiki/')})
-                        for valid_link in links:
-                            final_link = valid_link.get('href')[6:]
-                            if final_link.lower() not in global_link_hash: 
-                                global_link_hash[final_link.lower()] = 1
-                                link_hash[final_link] = link_to_normal(final_link)
-                            
+                        validate_links_and_populate(links, link_hash)
 
     #else:
         #print 'No see also section exists\n\n'
@@ -110,18 +120,56 @@ def get_links(title):
     #add dictionary to end of global hash
     return link_hash
 
+def validate_links_and_populate(links, link_hash):
+    
+    for valid_link in links:
+        final_link = valid_link.get('href')[6:]
+        final_link = re.sub(' ', '_', final_link)
+        if validate_link(final_link) == GOOD_LINK:
+            global_link_hash[final_link] = GOOD_LINK
+            link_hash[final_link] = link_to_normal(final_link)
+
+
+def get_page_name(link):
+
+    sourcecode = get_page(link)
+    soupobj = BeautifulSoup(sourcecode, parser)
+
+
+    try:
+        name = soupobj.find('h1').text
+    except:
+        name = 'N/A'
+        print 'Error finding name of webpage using H1'
+    #may need to remove soon
+    if category_filter(sourcecode) == BAD_LINK:
+        global_link_hash[name] = BAD_LINK
+    return name
+
+
+def validate_link(link):
+    
+    if link not in global_link_hash:
+            name = get_page_name(link)
+            if name not in global_link_hash:
+                global_link_hash[name] = GOOD_LINK
+                print 'Added', name, 'from', link
+                return GOOD_LINK
+            else:
+                print link, ' was not in global hash but', name, ' was.'
+    return BAD_LINK
+
 def category_filter(page_data):
     x=re.compile("^regions|ancient|countries|capitals|boroughs|towns|continents|provinces|numbers|sexual|states|cities|nations|stimulants|drugs|medicines$")
     soup = BeautifulSoup(page_data, 'lxml')
-    links=[]
-    i=1
     cat=soup.find('div',id="mw-normal-catlinks")
-    for link in cat.findAll('a', attrs={'href': re.compile("^/wiki/Category")}):
-                line=link.get('href')[15:]
-                line=re.sub('_', ' ',line)
-                if x.findall(line.lower())!=[]:
-                    i=-1
-    return i 
+    if cat != None:
+        for link in cat.findAll('a', attrs={'href': re.compile("^/wiki/Category")}):
+            line=link.get('href')[15:]
+            if x.findall(line.lower())!=[]:
+                global_link_hash[line] = BAD_LINK
+                return BAD_LINK
+    return GOOD_LINK 
 
 def link_to_normal(link):
     link_key = link
@@ -138,32 +186,27 @@ category_check = re.compile("^:wikt|outline|portal|list|sexual|latin|history|glo
 def build_tree(current_link, depth, current_depth, hashes):
     if current_depth > depth:
         return
-    #print 'starting depth ', current_depth
+    
+    #print '-' * (current_depth**2), '>' , current_link
     current_level_hash = get_links(current_link)
     
     hashes.append((str(current_depth) + ".) " + current_link, current_level_hash))
-    for link_key in current_level_hash.viewkeys():
+    for link_key in current_level_hash.viewkeys():    
         build_tree(current_level_hash.get(link_key), depth, current_depth + 1, hashes)
 
     #print "finished depth ", current_depth
 
 
+def validate_depth(hashes, depth):
+    pass
 
 
 
 
+def write_to_file(name, hashes):
 
-
-
-if __name__ == '__main__':
-    starting_link = 'sex toy'
+    fw = open(name, "w+")
     
-    
-
-    fw = open("wiki_data.txt", "w+")
-    
-    hashes = []
-    build_tree(starting_link, 2, 1, hashes)
     for index in range(len(hashes)):
         
         fw.write(re.sub('_', ' ', hashes[index][0]) + '\n')
@@ -176,8 +219,57 @@ if __name__ == '__main__':
         fw.write("\n")
 
     fw.close()
+
+
+def write_global_sorted_to_file(name):
+    fw = open(name, 'w+')
+
+    all_links = global_link_hash.keys()
+    all_links.sort()
+
+    for element in all_links:
+        if global_link_hash.get(element) == BAD_LINK:
+            fw.write('**BAD LINK**\t\t')
+        fw.write(element + '\n')
+        
+
+    fw.close()
+
+def write_hashes_sorted_to_file(name, hashes):
+    fw = open(name, 'w+')
+
+    all_links = []
+
+    for index in range(len(hashes)):
+        pass        
+
+if __name__ == '__main__':
+    starting_link = 'religion'
+    
+    hashes = []
+    
+    start_time = timeit.default_timer()
+    build_tree(starting_link, 2, 1, hashes)
+    elapsed_time = timeit.default_timer() - start_time
+    
+
+    print elapsed_time, ' to build tree'
+    
+    start_time = timeit.default_timer()
+    write_to_file('wiki_data.txt', hashes)
+    elapsed_time = timeit.default_timer() - start_time
+    print elapsed_time, ' to write hashes to file'
+    
+    
+    
+    start_time = timeit.default_timer()
+    write_global_sorted_to_file('global_wiki_data_sorted.txt')
+    elapsed_time = timeit.default_timer() - start_time
+    print elapsed_time, ' to write global to file'
+
         
     print 'Links deleted: ', DELETE_COUNT
-
+    
+   
 
 

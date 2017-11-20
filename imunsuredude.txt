@@ -1,6 +1,0 @@
-Rabin-Karp algorithm
-Computer science
-Hash function
-Big-O notation
-String searching algorithm
-=

@@ -144,6 +144,8 @@ def get_page_name(link):
     #may need to remove soon
     if category_filter(sourcecode) == BAD_LINK:
         global_link_hash[name] = BAD_LINK
+        global DELETE_COUNT
+        DELETE_COUNT+=1
     return name
 
 
@@ -168,6 +170,8 @@ def category_filter(page_data):
             line=link.get('href')[15:]
             if x.findall(line.lower())!=[]:
                 global_link_hash[line] = BAD_LINK
+                global DELETE_COUNT
+                DELETE_COUNT += 1
                 return BAD_LINK
     return GOOD_LINK 
 
@@ -260,15 +264,7 @@ if __name__ == '__main__':
     elapsed_time = timeit.default_timer() - start_time
     print elapsed_time, ' to write hashes to file'
     
-    
-    
-    start_time = timeit.default_timer()
-    write_global_sorted_to_file('global_wiki_data_sorted.txt')
-    elapsed_time = timeit.default_timer() - start_time
-    print elapsed_time, ' to write global to file'
-
-        
-    print 'Links deleted: ', DELETE_COUNT
+    print 'Links duplicates caught: ', DELETE_COUNT
     
    
 

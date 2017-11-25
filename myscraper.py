@@ -194,8 +194,10 @@ def build_tree(current_link, depth, current_depth, hashes):
     #print '-' * (current_depth**2), '>' , current_link
     current_level_hash = get_links(current_link)
     
-    hashes.append((str(current_depth) + ".) " + current_link, current_level_hash))
-    for link_key in current_level_hash.viewkeys():    
+    if current_depth not in hashes:
+        hashes[current_depth] = [current_link]
+    for link_key in current_level_hash.viewkeys():
+        hashes[current_depth].append(link_key)
         build_tree(current_level_hash.get(link_key), depth, current_depth + 1, hashes)
 
     #print "finished depth ", current_depth
@@ -211,16 +213,13 @@ def write_to_file(name, hashes):
 
     fw = open(name, "w+")
     
-    for index in range(len(hashes)):
-        
-        fw.write(re.sub('_', ' ', hashes[index][0]) + '\n')
-        for key in hashes[index][1]:
-            hash_link = hashes[index][1].get(key)
+    for key in hashes:
+        for indice in range (len(hashes.get(key))):
+            hash_link = hashes.get(key)[indice]
             final_string = re.sub('_', ' ', hash_link) 
             final_string = hash_link
-            #print final_string
             fw.write(final_string + "\n")
-        fw.write("\n")
+        fw.write("=\n")
 
     fw.close()
 
@@ -250,7 +249,7 @@ def write_hashes_sorted_to_file(name, hashes):
 if __name__ == '__main__':
     starting_link = 'religion'
     
-    hashes = []
+    hashes ={} 
     
     start_time = timeit.default_timer()
     build_tree(starting_link, 2, 1, hashes)

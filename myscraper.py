@@ -1,6 +1,9 @@
 import sys
 import re
 from bs4 import BeautifulSoup, NavigableString
+from multiprocessing.dummy import Pool
+from multiprocessing import cpu_count
+
 import urllib
 import urllib2
 import requests
@@ -40,21 +43,28 @@ def validate(title):
     return GOOD_LINK
 
 def get_links(title):
-    
-    
-    
-    
+    print 'getting links'
     url = re.sub(' ', '_', title)
-    sourcecode = get_page(url)
-    soupobj = BeautifulSoup(sourcecode, parser)
-    
+    if url not in global_link_hash:
+        sourcecode = get_page(url)
+        global_link_hash[title] = sourcecode
+        global_link_hash[url] = sourcecode
+    else:
+        sourcecode = global_link_hash[url]
+        
+    try:
+        soupobj = BeautifulSoup(sourcecode, parser)
+    except:
+        print 'failed to get soupobj'
+        return {}
+
+
+
     main_name = soupobj.find("h1")
     main_name = main_name.text
+    global_link_hash[main_name] = sourcecode 
     print url, '->', main_name 
     
-    global_link_hash[main_name] = GOOD_LINK
-    global_link_hash[title] = GOOD_LINK
-    global_link_hash[url] = GOOD_LINK
     
     redirect = soupobj.find('span', {'class':'mw-redirectedfrom'})
     doc_title = soupobj.find('title').text
@@ -70,13 +80,14 @@ def get_links(title):
     
     if category_filter(sourcecode) == BAD_LINK:
         #try to remove itself
-        global_link_hash[url] = BAD_LINK
+        global_link_hash[url] = sourcecode
         global DELETE_COUNT
         DELETE_COUNT += 1
         return {} 
     
     
-
+    if soupobj.find('div', {'class': 'mw-parser-output'}) == None:
+        return {}
     intro = soupobj.find("div", {'class':'mw-parser-output'}).findAll();
     link_hash = {}
     for element in intro:
@@ -125,14 +136,18 @@ def validate_links_and_populate(links, link_hash):
     for valid_link in links:
         final_link = valid_link.get('href')[6:]
         final_link = re.sub(' ', '_', final_link)
-        if validate_link(final_link) == GOOD_LINK:
-            global_link_hash[final_link] = GOOD_LINK
-            link_hash[final_link] = link_to_normal(final_link)
+        result = validate_link(final_link)
+        if result[0] == GOOD_LINK:
+            global_link_hash[final_link] = result[1]
+            link_hash[final_link] = result[1] 
 
 
 def get_page_name(link):
-
-    sourcecode = get_page(link)
+    
+    if link not in global_link_hash:
+        sourcecode = get_page(link)
+    else:
+        sourcecode = global_link_hash[link]
     soupobj = BeautifulSoup(sourcecode, parser)
 
 
@@ -143,23 +158,24 @@ def get_page_name(link):
         print 'Error finding name of webpage using H1'
     #may need to remove soon
     if category_filter(sourcecode) == BAD_LINK:
-        global_link_hash[name] = BAD_LINK
+        global_link_hash[name] = sourcecode 
         global DELETE_COUNT
         DELETE_COUNT+=1
-    return name
+    return (name, sourcecode)
 
 
 def validate_link(link):
-    
+    print 'validating', link 
     if link not in global_link_hash:
             name = get_page_name(link)
-            if name not in global_link_hash:
-                global_link_hash[name] = GOOD_LINK
-                print 'Added', name, 'from', link
-                return GOOD_LINK
+            if name[0] not in global_link_hash:
+                global_link_hash[name] = name[1]
+                print 'Added', name[0], 'from', link
+                return (GOOD_LINK, name[1])
             else:
-                print link, ' was not in global hash but', name, ' was.'
-    return BAD_LINK
+                print link, ' was not in global hash but', name[0], ' was.'
+                return (BAD_LINK, name[1])
+    return (BAD_LINK, -1)
 
 def category_filter(page_data):
     x=re.compile("^regions|ancient|countries|capitals|boroughs|towns|continents|provinces|numbers|sexual|states|cities|nations|stimulants|drugs|medicines$")
@@ -203,11 +219,6 @@ def build_tree(current_link, depth, current_depth, hashes):
     #print "finished depth ", current_depth
 
 
-def validate_depth(hashes, depth):
-    pass
-
-
-
 
 def write_to_file(name, hashes):
 
@@ -246,13 +257,33 @@ def write_hashes_sorted_to_file(name, hashes):
     for index in range(len(hashes)):
         pass        
 
-if __name__ == '__main__':
-    starting_link = 'religion'
+def build_tree_iter(depth, hashes):
     
+    pass
+
+
+if __name__ == '__main__':
+    starting_link = 'Rabin-Karp algorithm'
     hashes ={} 
     
+    pool = Pool(cpu_count() * 2)
+
     start_time = timeit.default_timer()
-    build_tree(starting_link, 2, 1, hashes)
+    resulting_hashes = pool.map(get_links, [starting_link])
+
+    next_seq = []
+    for key in resulting_hashes:
+        for mine in key.viewkeys():
+            next_seq.append(mine)
+
+        resulting_hashes = pool.map(get_links, next_seq[0:])
+    elapsed_time = timeit.default_timer() - start_time
+    print 'done: ', elapsed_time
+    
+    
+    '''
+    start_time = timeit.default_timer()
+    build_tree(starting_link, 1, 1, hashes)
     elapsed_time = timeit.default_timer() - start_time
     
 
@@ -262,7 +293,7 @@ if __name__ == '__main__':
     write_to_file('wiki_data.txt', hashes)
     elapsed_time = timeit.default_timer() - start_time
     print elapsed_time, ' to write hashes to file'
-    
+    '''
     print 'Links duplicates caught: ', DELETE_COUNT
     
    

@@ -45,7 +45,16 @@ def validate(title):
 def get_links(title):
     url = re.sub(' ', '_', title)
     if url not in global_link_hash:
-        sourcecode = get_page(url)
+        try:
+            sourcecode = get_page(url)
+        except:
+            try:
+                sourcecode = get_page(urllib.quote(url))
+            except:
+                print '!Could not load',url
+                return {}
+
+
         global_link_hash[title] = sourcecode
         global_link_hash[url] = sourcecode
     else:
@@ -144,7 +153,13 @@ def validate_links_and_populate(links, link_hash):
 def get_page_name(link):
     
     if link not in global_link_hash:
-        sourcecode = get_page(link)
+        try:
+            sourcecode = get_page(link)
+        except:
+            print '!Could not load',link
+            return ('NA', '')
+    
+    
     else:
         sourcecode = global_link_hash[link]
     soupobj = BeautifulSoup(sourcecode, parser)
@@ -166,7 +181,7 @@ def get_page_name(link):
 def validate_link(link):
     if link not in global_link_hash:
             name = get_page_name(link)
-            if name[0] not in global_link_hash:
+            if name[0] not in global_link_hash and name[0] != 'NA':
                 global_link_hash[name] = name[1]
                 print 'Added', name[0], 'from', link
                 return (GOOD_LINK, name[1])
@@ -174,6 +189,7 @@ def validate_link(link):
                 print link, ' was not in global hash but', name[0], ' was.'
                 return (BAD_LINK, name[1])
     return (BAD_LINK, -1)
+
 
 def category_filter(page_data):
     x=re.compile("^regions|ancient|countries|capitals|boroughs|towns|continents|provinces|numbers|sexual|states|cities|nations|stimulants|drugs|medicines$")
@@ -306,36 +322,7 @@ if __name__ == '__main__':
     print 'Created a',depth, 'high tree in ', (elapsed_time / 60.0), 'minutes.'
     
     iter_write_to_file('wiki_data.txt', my_results)
-
-
-    '''
-    pool = Pool(cpu_count() * 2)
-
-    resulting_hashes = pool.map(get_links, [starting_link])
-
-    hashes ={} 
-    next_seq = []
-    for key in resulting_hashes:
-        for mine in key.viewkeys():
-            next_seq.append(mine)
-
-        resulting_hashes.append(pool.map(get_links, next_seq[0:]))
-    
-    '''
-    '''
-    start_time = timeit.default_timer()
-    build_tree(starting_link, 1, 1, hashes)
-    elapsed_time = timeit.default_timer() - start_time
-    
-
-    print elapsed_time, ' to build tree'
-    
-    start_time = timeit.default_timer()
-    write_to_file('wiki_data.txt', hashes)
-    elapsed_time = timeit.default_timer() - start_time
-    print elapsed_time, ' to write hashes to file'
-    '''
-    print 'Links duplicates caught: ', DELETE_COUNT
+    print 'Link duplicates removed: ', DELETE_COUNT
     
    
 

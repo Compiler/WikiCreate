@@ -43,7 +43,6 @@ def validate(title):
     return GOOD_LINK
 
 def get_links(title):
-    print 'getting links'
     url = re.sub(' ', '_', title)
     if url not in global_link_hash:
         sourcecode = get_page(url)
@@ -63,7 +62,7 @@ def get_links(title):
     main_name = soupobj.find("h1")
     main_name = main_name.text
     global_link_hash[main_name] = sourcecode 
-    print url, '->', main_name 
+    #print url, '->', main_name 
     
     
     redirect = soupobj.find('span', {'class':'mw-redirectedfrom'})
@@ -72,7 +71,7 @@ def get_links(title):
     
     if redirect != None:
         redirect_from_name = (redirect.find('a', {'class':'mw-redirect'})).text
-        print url, ' redirected from ', redirect_from_name
+        #print url, ' redirected from ', redirect_from_name
     
     
     
@@ -165,15 +164,15 @@ def get_page_name(link):
 
 
 def validate_link(link):
-    print 'validating', link 
+    #print 'validating', link 
     if link not in global_link_hash:
             name = get_page_name(link)
             if name[0] not in global_link_hash:
                 global_link_hash[name] = name[1]
-                print 'Added', name[0], 'from', link
+                #print 'Added', name[0], 'from', link
                 return (GOOD_LINK, name[1])
             else:
-                print link, ' was not in global hash but', name[0], ' was.'
+                #print link, ' was not in global hash but', name[0], ' was.'
                 return (BAD_LINK, name[1])
     return (BAD_LINK, -1)
 
@@ -257,30 +256,71 @@ def write_hashes_sorted_to_file(name, hashes):
     for index in range(len(hashes)):
         pass        
 
-def build_tree_iter(depth, hashes):
-    
-    pass
 
+
+global_start = 'Rabin-Karp algorithm'
+def build_tree_iter(depth, starting_link):
+    
+    pool = Pool(cpu_count() * 2)
+    current_depth = 1
+    resulting_link_hash = {current_depth: pool.map(get_links, [starting_link])}
+    if depth == 1:
+        return resulting_link_hash
+    
+    
+    for current_depth in range(1, depth):
+        links = []
+        something = resulting_link_hash.get(current_depth)
+        for element in something: 
+            for key in element.viewkeys():
+                links.append(key)
+        current_depth += 1
+        if current_depth not in resulting_link_hash:
+            resulting_link_hash[current_depth] = pool.map(get_links, links)
+    return resulting_link_hash
+
+def iter_write_to_file(file_name, l_format):
+    fw = open(file_name, 'w+')
+    depth = 1
+    while depth in l_format:
+        information = l_format.get(depth)
+        for element in information:
+            for key in element:
+           
+                fw.write(key)
+                fw.write('\n')
+
+        fw.write('=\n')
+        
+        depth+= 1
+        
+    fw.close()
 
 if __name__ == '__main__':
     starting_link = 'Rabin-Karp algorithm'
-    hashes ={} 
+    depth = 2
+    start_time = timeit.default_timer()
+    my_results = build_tree_iter(depth, starting_link)
+    elapsed_time = timeit.default_timer() - start_time
+    print 'Created a',depth, 'high tree in ', (elapsed_time / 60.0), 'minutes.'
     
+    iter_write_to_file('wiki_data.txt', my_results)
+
+
+    '''
     pool = Pool(cpu_count() * 2)
 
-    start_time = timeit.default_timer()
     resulting_hashes = pool.map(get_links, [starting_link])
 
+    hashes ={} 
     next_seq = []
     for key in resulting_hashes:
         for mine in key.viewkeys():
             next_seq.append(mine)
 
-        resulting_hashes = pool.map(get_links, next_seq[0:])
-    elapsed_time = timeit.default_timer() - start_time
-    print 'done: ', elapsed_time
+        resulting_hashes.append(pool.map(get_links, next_seq[0:]))
     
-    
+    '''
     '''
     start_time = timeit.default_timer()
     build_tree(starting_link, 1, 1, hashes)

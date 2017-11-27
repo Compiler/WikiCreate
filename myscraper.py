@@ -62,7 +62,7 @@ def get_links(title):
     main_name = soupobj.find("h1")
     main_name = main_name.text
     global_link_hash[main_name] = sourcecode 
-    #print url, '->', main_name 
+    print url, '->', main_name 
     
     
     redirect = soupobj.find('span', {'class':'mw-redirectedfrom'})
@@ -71,7 +71,7 @@ def get_links(title):
     
     if redirect != None:
         redirect_from_name = (redirect.find('a', {'class':'mw-redirect'})).text
-        #print url, ' redirected from ', redirect_from_name
+        print url, ' redirected from ', redirect_from_name
     
     
     
@@ -164,15 +164,14 @@ def get_page_name(link):
 
 
 def validate_link(link):
-    #print 'validating', link 
     if link not in global_link_hash:
             name = get_page_name(link)
             if name[0] not in global_link_hash:
                 global_link_hash[name] = name[1]
-                #print 'Added', name[0], 'from', link
+                print 'Added', name[0], 'from', link
                 return (GOOD_LINK, name[1])
             else:
-                #print link, ' was not in global hash but', name[0], ' was.'
+                print link, ' was not in global hash but', name[0], ' was.'
                 return (BAD_LINK, name[1])
     return (BAD_LINK, -1)
 
@@ -297,10 +296,12 @@ def iter_write_to_file(file_name, l_format):
     fw.close()
 
 if __name__ == '__main__':
-    starting_link = 'Rabin-Karp algorithm'
-    depth = 2
+
+    starting_link = raw_input('Enter the name of the starting link: ')
+    depth = raw_input('Enter the depth you want the tree to expand to: ') 
     start_time = timeit.default_timer()
-    my_results = build_tree_iter(depth, starting_link)
+    print 'Beginning expansion...'
+    my_results = build_tree_iter((int)(depth), starting_link)
     elapsed_time = timeit.default_timer() - start_time
     print 'Created a',depth, 'high tree in ', (elapsed_time / 60.0), 'minutes.'
     
